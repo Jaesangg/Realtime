@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Game</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      #gameCanvas {
+        background-color: #f0f0f0;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const players = {}; // 플레이어 객체
+      let stageObstacles = []; // 스테이지 장애물 데이터
+
+      // 스테이지 데이터 로드
+      socket.on("loadStage", (stageData) => {
+        console.log("스테이지 데이터:", stageData);
+        stageObstacles = stageData[0].obstacles; // 첫 번째 스테이지 사용
+      });
+
+      // 플레이어 위치 업데이트
+      socket.on("updatePlayer", (data) => {
+        players[data.id] = { x: data.x, y: data.y };
+      });
+
+      // 충돌 이벤트 처리 및 점수 증가
+      socket.on("collision", (data) => {
+        alert(data.message);
+        increaseScore(10); // 충돌 시 점수 증가
+      });
+
+      // 키보드 입력 처리
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") socket.emit("move", { direction: "right" });
+        if (e.key === "ArrowLeft") socket.emit("move", { direction: "left" });
+        if (e.key === "ArrowUp") socket.emit("move", { direction: "up" });
+        if (e.key === "ArrowDown") socket.emit("move", { direction: "down" });
+      });
+
+      // 플레이어 점수
+      let score = 0;
+
+      // 점수 증가 함수
+      function increaseScore(amount) {
+        score += 100; // 원하는 점수로 조정
+      }
+
+      // 호출할 때 20점으로 수정
+      increaseScore(0);
+
+      // 점수 출력 함수
+      function drawScore() {
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "black";
+        ctx.fillText("Score: " + score, 10, 30); // 화면의 좌측 상단에 점수 출력
+      }
+
+      // 게임 루프
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // 화면 초기화
+
+        // 장애물 그리기
+        stageObstacles.forEach((obs) => {
+          ctx.fillStyle = "red";
+          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+        });
+
+        // 플레이어 그리기
+        Object.values(players).forEach((player) => {
+          ctx.fillStyle = "blue";
+          ctx.fillRect(player.x, player.y, 50, 50);
+        });
+
+        // 스코어 그리기
+        drawScore();
+
+        // 다음 프레임 요청
+        requestAnimationFrame(gameLoop);
+      }
+
+      socket.on("stageClear", (data) => {
+        alert(data.message); // 스테이지 클리어 메시지
+      });
+
+      socket.on("loadStage", (stageData) => {
+        console.log("스테이지 로드:", stageData);
+        stageObstacles = stageData.obstacles; // 장애물 데이터 갱신
+      });
+
+      socket.on("gameComplete", (data) => {
+        alert(data.message); // 게임 완료 메시지
+      });
+      gameLoop(); // 게임 루프 시작
+    </script>
+  </body>
+</html>
